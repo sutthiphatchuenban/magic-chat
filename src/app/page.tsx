@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Wand2, User, Plus, Layout,
-  Mic, ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download
+  Mic, ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -52,6 +52,7 @@ export default function Home() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedChats = localStorage.getItem('wizard_chats');
@@ -482,7 +483,7 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: isLoaded ? 1 : 0 }}
         transition={{ duration: 0.5 }}
-        className="flex h-screen bg-[#050510] text-[#e0e0f0] overflow-hidden font-sans relative"
+        className="flex h-[100dvh] bg-[#050510] text-[#e0e0f0] overflow-hidden font-sans relative"
       >
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none opacity-10 overflow-hidden">
@@ -597,7 +598,7 @@ export default function Home() {
           </header>
 
           {/* Chat Area */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 sm:px-4 w-full max-w-3xl mx-auto custom-scrollbar pt-6 sm:pt-10 pb-32 sm:pb-48">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 sm:px-4 w-full max-w-3xl mx-auto custom-scrollbar pt-2 sm:pt-10 pb-28 sm:pb-48">
             {messages.length <= 1 ? (
               <div className="h-full flex flex-col items-center justify-center -mt-10 sm:-mt-20 px-4">
                 <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-12 sm:w-16 h-12 sm:h-16 bg-[#d4af37] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.3)] mb-6 sm:mb-8"><Wand2 size={28} className="text-black sm:hidden" /><Wand2 size={32} className="text-black hidden sm:block" /></motion.div>
@@ -607,15 +608,42 @@ export default function Home() {
             ) : (
               <div className="space-y-4 sm:space-y-8">
                 {messages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group/msg relative`}>
                     <div className={`flex gap-2 sm:gap-4 max-w-[95%] sm:max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-[#4b0082]' : 'bg-[#d4af37]'}`}>
                         {msg.role === 'user' ? <User size={16} /> : <Wand2 size={16} className="text-black" />}
                       </div>
-                      <div className="flex flex-col gap-1 w-full overflow-hidden">
+                      <div className="flex flex-col gap-1 w-full min-w-0">
                         {msg.reasoning && <ReasoningBlock reasoning={msg.reasoning} />}
-                        <div className={`w-full ${msg.role === 'user' ? 'bg-white/5 px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-white/10 text-sm sm:text-base' : 'font-serif text-base sm:text-lg leading-relaxed'}`}>
+                        <div className={`relative group/bubble w-full ${msg.role === 'user' ? 'bg-white/5 px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-white/10 text-sm sm:text-base' : 'font-serif text-base sm:text-lg leading-relaxed'}`}>
                           {renderContent(msg.content, msg.role)}
+
+                          {/* Message Actions */}
+                          <div className={`absolute -bottom-8 ${msg.role === 'user' ? 'right-0' : 'left-0'} flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1`}>
+                            <button
+                              onClick={() => {
+                                const text = typeof msg.content === 'string' ? msg.content : msg.content.map(c => c.type === 'text' ? c.text : '').join('');
+                                navigator.clipboard.writeText(text);
+                              }}
+                              className="p-1.5 text-white/40 hover:text-[#d4af37] hover:bg-white/10 rounded transition-colors"
+                              title="Copy"
+                            >
+                              <Copy size={13} />
+                            </button>
+                            {msg.role === 'user' && (typeof msg.content === 'string' || (Array.isArray(msg.content) && msg.content.some(c => c.type === 'text'))) && (
+                              <button
+                                onClick={() => {
+                                  const text = typeof msg.content === 'string' ? msg.content : msg.content.map(c => c.type === 'text' ? c.text : '').join('');
+                                  setInput(text);
+                                  inputRef.current?.focus();
+                                }}
+                                className="p-1.5 text-white/40 hover:text-[#d4af37] hover:bg-white/10 rounded transition-colors"
+                                title="Edit & Send Again"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -641,7 +669,7 @@ export default function Home() {
                 </div>
               )}
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[28px] p-2 sm:p-3 backdrop-blur-3xl flex flex-col gap-2">
-                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask anything..." className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20" />
+                <input type="text" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask anything..." className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20" />
                 <div className="flex items-center justify-between">
                   <div className="flex gap-0.5 sm:gap-1 items-center">
                     <button disabled={!selectedModel.vision} onClick={() => fileInputRef.current?.click()} type="button" className={`p-1.5 sm:p-2 rounded-lg ${selectedModel.vision ? 'hover:bg-white/5 text-[#d4af37]' : 'opacity-20 pointer-events-none'}`}><Plus size={18} /></button>
