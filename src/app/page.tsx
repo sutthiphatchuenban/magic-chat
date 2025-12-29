@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Wand2, User, Plus, Layout,
-  Mic, ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil
+  Mic, ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -53,6 +53,7 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const savedChats = localStorage.getItem('wizard_chats');
@@ -91,6 +92,15 @@ export default function Home() {
     if (chat) {
       setCurrentChatId(chatId);
       setMessages(chat.messages);
+    }
+  };
+
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      setIsGeneratingImage(false);
     }
   };
 
@@ -170,10 +180,14 @@ export default function Home() {
     }]);
 
     try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userPrompt })
+        body: JSON.stringify({ prompt: userPrompt }),
+        signal: controller.signal
       });
 
       const data = await response.json();
@@ -211,6 +225,7 @@ export default function Home() {
         });
       }
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       setMessages(prev => {
         const newMessages = [...prev];
         newMessages[newMessages.length - 1] = {
@@ -221,6 +236,7 @@ export default function Home() {
       });
     } finally {
       setIsGeneratingImage(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -250,11 +266,15 @@ export default function Home() {
     setIsLoading(true);
 
     try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const modelToSend = selectedModel.id === 'custom' ? customModelId : selectedModel.id;
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, model: modelToSend })
+        body: JSON.stringify({ messages: newMessages, model: modelToSend }),
+        signal: controller.signal
       });
 
       if (!response.ok) throw new Error('Magic connection failed');
@@ -354,6 +374,7 @@ export default function Home() {
       }
 
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       const errorMessage = `⚠️ **${selectedModel.name}** is currently unavailable.\n\nThis model might be temporarily down or overloaded. Please try:\n\n1. **Switch to a different model** using the dropdown above\n2. Wait a moment and try again\n\n_Click on the model name (${selectedModel.icon} ${selectedModel.name}) to see other options._`;
 
       setMessages(prev => [...prev, {
@@ -362,6 +383,7 @@ export default function Home() {
       }]);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -715,7 +737,22 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
                     <button type="button" className="hidden sm:block p-2 hover:bg-white/5 rounded-full text-white/40"><Mic size={20} /></button>
-                    <button type="submit" disabled={isGeneratingImage} className={`p-2 rounded-full transition-all ${input.trim() || selectedImage ? (isImageMode ? 'bg-purple-500 text-white' : 'bg-white text-black') : 'bg-white/5 text-white/20'}`}><Send size={18} /></button>
+                    {isLoading || isGeneratingImage ? (
+                      <button
+                        type="button"
+                        onClick={stopGeneration}
+                        className="p-2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all animate-pulse"
+                      >
+                        <Square size={18} fill="currentColor" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className={`p-2 rounded-full transition-all ${input.trim() || selectedImage ? (isImageMode ? 'bg-purple-500 text-white' : 'bg-white text-black') : 'bg-white/5 text-white/20'}`}
+                      >
+                        <Send size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
