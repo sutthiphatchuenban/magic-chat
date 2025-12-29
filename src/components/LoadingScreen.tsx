@@ -10,7 +10,13 @@ export const LoadingScreen = () => {
 
     useEffect(() => {
         setIsMounted(true);
-        setIsMobile(window.innerWidth < 768);
+        try {
+            if (typeof window !== 'undefined') {
+                setIsMobile(window.innerWidth < 768);
+            }
+        } catch (e) {
+            setIsMobile(true); // Default to mobile-friendly on error
+        }
     }, []);
 
     // Reduced particles for mobile (5 instead of 20)

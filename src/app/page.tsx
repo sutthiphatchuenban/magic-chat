@@ -58,18 +58,28 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const savedChats = localStorage.getItem('wizard_chats');
-    if (savedChats) setChats(JSON.parse(savedChats));
+    // Fallback: ensure loading screen disappears even if there's an error
+    const fallbackTimer = setTimeout(() => setIsLoaded(true), 5000);
 
-    // Show loading screen for 3.5 seconds
-    const timer = setTimeout(() => setIsLoaded(true), 3500);
+    try {
+      const savedChats = localStorage.getItem('wizard_chats');
+      if (savedChats) setChats(JSON.parse(savedChats));
+    } catch (e) {
+      console.error('Failed to load chats:', e);
+    }
+
+    // Show loading screen for 3 seconds
+    const timer = setTimeout(() => setIsLoaded(true), 3000);
 
     // Open sidebar by default on desktop (768px = md breakpoint)
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
       setIsSidebarOpen(true);
     }
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   useEffect(() => {
