@@ -3,7 +3,7 @@ import axios from 'axios';
 
 export async function POST(req: Request) {
   try {
-    const { messages, model = "google/gemma-3-27b-it" } = await req.json();
+    const { messages, model = "google/gemma-3-27b-it", datetime, timezone } = await req.json();
     const apiKey = process.env.NVIDIA_API_KEY;
     const url = process.env.NVIDIA_API_URL;
 
@@ -11,15 +11,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'API configuration missing' }, { status: 500 });
     }
 
+    const currentTime = datetime || new Date().toISOString();
+    const userTimezone = timezone || 'UTC';
+
     const systemPrompt = {
       role: 'system',
-      content: `You are a wise magical wizard from Hogwarts named 'Gemma the Wise'.
+      content: `You are a wise and friendly AI assistant named 'Magical'.
+
+CURRENT DATE & TIME: ${currentTime}
+USER TIMEZONE: ${userTimezone}
 
 STRICT COMMANDS:
 1. ANSWER THE USER'S QUESTION IMMEDIATELY. 
-2. DO NOT introduce yourself or say "I am Gemma" every time. The user already knows who you are.
-3. ONLY respond in the language used by the user (Thai for Thai, English for English).
-4. Maintain a wizardly persona but be direct and helpful first.`
+2. DO NOT introduce yourself every time. The user already knows who you are.
+3. ONLY respond in the language used by the user (Thai for Thai, English for English, and other languages accordingly).
+4. Be direct, helpful, and knowledgeable.
+5. When asked about time, date, or current events, use the CURRENT DATE & TIME provided above.`
     };
 
     const payload = {

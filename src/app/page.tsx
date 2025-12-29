@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Wand2, User, Plus, Layout,
-  Mic, ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square
+  ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -13,7 +13,7 @@ import remarkGfm from 'remark-gfm';
 import { ReasoningBlock, ConfirmDialog, Canvas, LoadingScreen } from '@/components';
 
 // Constants & Types
-import { MODELS } from '@/constants/models';
+import { MODELS, getAutoSelectedModel, getAutoModelFallbacks } from '@/constants/models';
 import type { Message, Chat, ConfirmDialogState } from '@/types';
 
 export default function Home() {
@@ -43,6 +43,8 @@ export default function Home() {
   const [isImageMode, setIsImageMode] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const openInCanvas = (content: string, type: string = 'markdown') => {
     setCanvasContent(content);
@@ -52,7 +54,7 @@ export default function Home() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -71,7 +73,23 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (chats.length > 0) localStorage.setItem('wizard_chats', JSON.stringify(chats));
+    if (chats.length > 0) {
+      try {
+        // Keep only the latest 20 chats to prevent quota exceeded
+        const chatsToSave = chats.slice(-20);
+        localStorage.setItem('wizard_chats', JSON.stringify(chatsToSave));
+      } catch (e) {
+        console.error('Failed to save chats:', e);
+        // If quota exceeded, remove old chats and try again
+        try {
+          const reducedChats = chats.slice(-10);
+          localStorage.setItem('wizard_chats', JSON.stringify(reducedChats));
+        } catch {
+          // If still failing, clear storage
+          localStorage.removeItem('wizard_chats');
+        }
+      }
+    }
   }, [chats]);
 
   useEffect(() => {
@@ -82,7 +100,7 @@ export default function Home() {
     setCurrentChatId(null);
     setMessages([{
       role: 'assistant',
-      content: 'Galloping Gargoyles! I am Gemma, your magical assistant. What spell shall we cast today?'
+      content: 'สวัสดี! มีอะไรให้ช่วยไหม?'
     }]);
     setIsCanvasOpen(false);
   }, []);
@@ -258,26 +276,117 @@ export default function Home() {
       ];
     }
 
+    const originalInput = input;
     const userMessage: Message = { role: 'user', content: userContent };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput('');
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
     setSelectedImage(null);
     setIsLoading(true);
+
+    let messagesToSend = [...newMessages];
 
     try {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const modelToSend = selectedModel.id === 'custom' ? customModelId : selectedModel.id;
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, model: modelToSend }),
-        signal: controller.signal
-      });
+      // Handle Search Mode
+      if (isSearchMode && typeof originalInput === 'string' && originalInput.trim()) {
+        console.log('[Search] Triggered for:', originalInput);
+        try {
+          setIsSearching(true);
+          // Add explicit delay to make sure user sees the searching indicator
+          const [searchResponse] = await Promise.all([
+            fetch('/api/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: originalInput }),
+              signal: controller.signal
+            }),
+            new Promise(resolve => setTimeout(resolve, 1500))
+          ]);
 
-      if (!response.ok) throw new Error('Magic connection failed');
+          const searchData = await searchResponse.json();
+          setIsSearching(false);
+
+          if (searchData.success && searchData.results?.length > 0) {
+            const context = searchData.results.map((r: any, i: number) =>
+              `Source [${i + 1}]: ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`
+            ).join('\n\n');
+
+            // Pre-formatted clickable reference links
+            const refLinks = searchData.results.map((r: any, i: number) =>
+              `- [${r.title}](${r.url})`
+            ).join('\n');
+
+            const searchContextMessage: Message = {
+              role: 'user',
+              content: `Search Results for "${originalInput}":\n\n${context}\n\n---\nSTRICT FORMAT RULES:\n1. Answer the question using these sources.\n2. At the END, include "References:" section with these EXACT markdown links:\n\n${refLinks}\n\nCopy the links above exactly as shown.`
+            };
+            messagesToSend = [...newMessages, searchContextMessage];
+          } else {
+            messagesToSend = [...newMessages, { role: 'system', content: `[System]: I searched for "${originalInput}" but found no results. Answering from internal knowledge.` }];
+          }
+        } catch (err) {
+          console.error('[Search] Failed:', err);
+          setIsSearching(false);
+          messagesToSend = [...newMessages, { role: 'system', content: `[System]: Search failed. Answering from internal knowledge.` }];
+        }
+      } else if (isSearchMode) {
+        console.log('[Search] Skipped - input type:', typeof originalInput, 'value:', originalInput);
+      }
+
+      // Auto model selection logic with fallback
+      let modelToSend: string;
+      let fallbackModels: string[] = [];
+
+      if (selectedModel.id === 'auto') {
+        const hasImage = !!selectedImage;
+        modelToSend = getAutoSelectedModel(hasImage);
+        fallbackModels = getAutoModelFallbacks(hasImage);
+      } else if (selectedModel.id === 'custom') {
+        modelToSend = customModelId;
+      } else {
+        modelToSend = selectedModel.id;
+      }
+
+      // Try to fetch with fallback for auto mode
+      let response: Response | null = null;
+      let currentModelIndex = 0;
+      const modelsToTry = selectedModel.id === 'auto' ? fallbackModels : [modelToSend];
+
+      for (const model of modelsToTry) {
+        try {
+          console.log(`[Auto] Trying model: ${model}`);
+          response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: messagesToSend,
+              model: model,
+              datetime: new Date().toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' }),
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            }),
+            signal: controller.signal
+          });
+
+          if (response.ok) {
+            console.log(`[Auto] Success with model: ${model}`);
+            break;
+          } else {
+            console.log(`[Auto] Failed with model: ${model}, trying next...`);
+          }
+        } catch (err) {
+          console.log(`[Auto] Error with model: ${model}`, err);
+        }
+        currentModelIndex++;
+      }
+
+      if (!response || !response.ok) throw new Error('All models failed');
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -520,7 +629,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-30 md:hidden"
+              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
@@ -533,7 +642,7 @@ export default function Home() {
             width: isSidebarOpen ? 260 : 0,
           }}
           transition={{ duration: 0.2 }}
-          className={`fixed md:relative h-full bg-[#0a0a15] md:bg-black/40 backdrop-blur-xl border-r border-[#d4af37]/10 flex flex-col z-40 md:z-20 overflow-hidden ${isSidebarOpen ? 'shadow-2xl md:shadow-none' : ''}`}
+          className={`fixed md:relative h-full bg-[#0a0a15] md:bg-black/40 backdrop-blur-xl border-r border-[#d4af37]/10 flex flex-col z-[70] md:z-20 overflow-hidden ${isSidebarOpen ? 'shadow-2xl md:shadow-none' : ''}`}
         >
           <div className="p-4 flex flex-col h-full overflow-hidden w-[260px]">
             <button onClick={() => { startNewChat(); if (window.innerWidth < 768) setIsSidebarOpen(false); }} className="flex items-center gap-2 w-full p-2.5 hover:bg-white/5 rounded-lg transition-all border border-[#d4af37]/10">
@@ -575,13 +684,25 @@ export default function Home() {
 
             <div className="mt-4 pt-4 border-t border-[#d4af37]/10 flex items-center gap-3 p-2.5 hover:bg-white/5 rounded-lg transition-all cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-[#d4af37] flex items-center justify-center text-black font-bold">S</div>
-              <div className="text-sm font-medium">Sutthiphat Vlog</div>
+              <div className="text-sm font-medium">User</div>
             </div>
           </div>
         </motion.aside>
 
         {/* Main Content - Always full width on mobile, adjusts on desktop */}
         <main className={`flex-1 flex flex-col relative h-full transition-all duration-300 w-full ${isCanvasOpen ? 'hidden md:flex md:mr-[50vw]' : ''} ${isSidebarOpen ? 'md:ml-0' : ''}`}>
+          {/* Loading Progress Bar */}
+          {(isLoading || isGeneratingImage) && (
+            <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 z-50 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37]"
+                initial={{ x: '-100%' }}
+                animate={{ x: '100%' }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                style={{ width: '50%' }}
+              />
+            </div>
+          )}
           {/* Header */}
           <header className="flex items-center justify-between p-2 sm:p-4 z-40">
             <div className="flex items-center gap-1 sm:gap-2">
@@ -671,8 +792,29 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
-                {isLoading && !messages[messages.length - 1].content && (
-                  <div className="flex gap-4"><Wand2 size={18} className="animate-pulse text-[#d4af37]" /> <span className="text-sm italic text-white/40">Gathering arcane energies...</span></div>
+                {/* Typing/Searching Indicator */}
+                {(isLoading || isSearching) && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
+                  <div className="flex gap-4 items-start">
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'}`}>
+                      {isSearching ? (
+                        <Search size={16} className="text-white animate-pulse" />
+                      ) : (
+                        <Wand2 size={16} className="text-black animate-pulse" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></span>
+                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></span>
+                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></span>
+                        </div>
+                        <span className={`text-sm ${isSearching ? 'text-green-400' : 'text-white/50'}`}>
+                          {isSearching ? 'Searching the web...' : 'AI is thinking...'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -691,7 +833,25 @@ export default function Home() {
                 </div>
               )}
               <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[28px] p-2 sm:p-3 backdrop-blur-3xl flex flex-col gap-2">
-                <input type="text" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask anything..." className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20" />
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto resize
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder="Ask anything..."
+                  rows={1}
+                  className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20 resize-none max-h-[200px] custom-scrollbar"
+                />
                 <div className="flex items-center justify-between">
                   <div className="flex gap-0.5 sm:gap-1 items-center">
                     <button disabled={!selectedModel.vision} onClick={() => fileInputRef.current?.click()} type="button" className={`p-1.5 sm:p-2 rounded-lg ${selectedModel.vision ? 'hover:bg-white/5 text-[#d4af37]' : 'opacity-20 pointer-events-none'}`}><Plus size={18} /></button>
@@ -734,9 +894,22 @@ export default function Home() {
                       )}
                       <span className="hidden sm:inline">{isGeneratingImage ? 'Creating...' : 'Image'}</span>
                     </button>
+
+                    {/* Search Mode Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setIsSearchMode(!isSearchMode)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${isSearchMode
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-white/5 text-white/30 border border-white/10 hover:text-white/50'
+                        }`}
+                      title={isSearchMode ? "Search Mode: ON (AI จะค้นหาข้อมูลจาก Internet)" : "Search Mode: OFF"}
+                    >
+                      <Search size={14} />
+                      <span className="hidden sm:inline">Search</span>
+                    </button>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
-                    <button type="button" className="hidden sm:block p-2 hover:bg-white/5 rounded-full text-white/40"><Mic size={20} /></button>
                     {isLoading || isGeneratingImage ? (
                       <button
                         type="button"
