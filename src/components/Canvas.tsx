@@ -81,7 +81,21 @@ export const Canvas = ({ content, type, onClose }: CanvasProps) => {
                         ) : (
                             <div className="w-full max-w-[800px] h-fit min-h-full bg-white rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-gray-200 p-12 mb-12 transform origin-top transition-transform duration-500 text-slate-900">
                                 <div className="prose prose-slate prose-headings:text-slate-900 prose-p:text-slate-800 prose-strong:text-slate-900 prose-li:text-slate-800 max-w-none font-serif">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            table: ({ children }) => (
+                                                <div className="my-4 overflow-x-auto rounded-lg border border-slate-300 shadow-sm">
+                                                    <table className="min-w-full divide-y divide-slate-300">{children}</table>
+                                                </div>
+                                            ),
+                                            thead: ({ children }) => <thead className="bg-slate-100">{children}</thead>,
+                                            tbody: ({ children }) => <tbody className="divide-y divide-slate-200 bg-white">{children}</tbody>,
+                                            tr: ({ children }) => <tr className="hover:bg-slate-50 transition-colors">{children}</tr>,
+                                            th: ({ children }) => <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900 uppercase tracking-wider">{children}</th>,
+                                            td: ({ children }) => <td className="px-4 py-3 text-sm text-slate-700">{children}</td>,
+                                        }}
+                                    >
                                         {content}
                                     </ReactMarkdown>
                                 </div>

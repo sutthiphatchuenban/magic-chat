@@ -9,6 +9,8 @@ export interface ModelConfig {
 export const MODELS: ModelConfig[] = [
     { id: 'auto', name: 'Auto', icon: '🪄', vision: true, fileTypes: ['PNG', 'JPG', 'JPEG'] },
     { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', icon: '✨', vision: true, fileTypes: ['PNG', 'JPG', 'JPEG'] },
+    { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron Nano', icon: '🟢', vision: false, fileTypes: [] },
+    { id: 'microsoft/phi-4-mini-instruct', name: 'Phi-4 Mini', icon: '🔷', vision: false, fileTypes: [] },
     { id: 'moonshotai/kimi-k2-thinking', name: 'Kimi K2 Thinking', icon: '🌙', vision: false, fileTypes: [] },
     { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2 Instruct', icon: '🌓', vision: false, fileTypes: [] },
     { id: 'qwen/qwen3-coder-480b-a35b-instruct', name: 'Qwen 3 Coder 480B', icon: '💻', vision: false, fileTypes: [] },
@@ -23,6 +25,8 @@ export const MODELS: ModelConfig[] = [
 // Fallback models list (ordered by priority)
 export const TEXT_MODEL_FALLBACKS = [
     'google/gemma-3-27b-it',
+    'nvidia/nemotron-3-nano-30b-a3b',
+    'microsoft/phi-4-mini-instruct',
     'mistralai/mistral-medium-3-instruct',
     'deepseek-ai/deepseek-v3.1-terminus',
     'qwen/qwen3-next-80b-a3b-instruct',

@@ -82,25 +82,90 @@ export default function Home() {
     };
   }, []);
 
+  // Helper function to strip base64 images and reduce storage size
+  const prepareChatsForStorage = useCallback((chatsToSave: Chat[]): Chat[] => {
+    return chatsToSave.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(msg => {
+        // Handle array content (e.g., messages with images)
+        if (Array.isArray(msg.content)) {
+          const processedContent = msg.content.map(item => {
+            if (item.type === 'image_url' && item.image_url?.url?.startsWith('data:')) {
+              // Replace base64 images with a placeholder
+              return { type: 'text' as const, text: '[Image was attached]' };
+            }
+            // Truncate very long text content
+            if (item.type === 'text' && item.text && item.text.length > 5000) {
+              return { type: 'text' as const, text: item.text.substring(0, 5000) + '... [truncated]' };
+            }
+            return item;
+          });
+          return { ...msg, content: processedContent };
+        }
+        // Handle string content
+        if (typeof msg.content === 'string') {
+          // Truncate very long string content
+          if (msg.content.length > 10000) {
+            return { ...msg, content: msg.content.substring(0, 10000) + '... [truncated]' };
+          }
+        }
+        // Remove reasoning content to save space (it can be quite large)
+        if (msg.reasoning && msg.reasoning.length > 2000) {
+          return { ...msg, reasoning: msg.reasoning.substring(0, 2000) + '... [truncated]' };
+        }
+        return msg;
+      })
+    }));
+  }, []);
+
   useEffect(() => {
     if (chats.length > 0) {
-      try {
-        // Keep only the latest 20 chats to prevent quota exceeded
-        const chatsToSave = chats.slice(-20);
-        localStorage.setItem('wizard_chats', JSON.stringify(chatsToSave));
-      } catch (e) {
-        console.error('Failed to save chats:', e);
-        // If quota exceeded, remove old chats and try again
+      const saveChats = (chatList: Chat[], maxChats: number): boolean => {
         try {
-          const reducedChats = chats.slice(-10);
-          localStorage.setItem('wizard_chats', JSON.stringify(reducedChats));
-        } catch {
-          // If still failing, clear storage
-          localStorage.removeItem('wizard_chats');
+          const chatsToSave = chatList.slice(-maxChats);
+          const preparedChats = prepareChatsForStorage(chatsToSave);
+          const jsonString = JSON.stringify(preparedChats);
+
+          // Check estimated size (localStorage has ~5MB limit)
+          const estimatedSize = new Blob([jsonString]).size;
+          if (estimatedSize > 4 * 1024 * 1024) { // 4MB safety threshold
+            console.warn(`Chat data too large (${(estimatedSize / 1024 / 1024).toFixed(2)}MB), reducing...`);
+            return false;
+          }
+
+          localStorage.setItem('wizard_chats', jsonString);
+          return true;
+        } catch (e) {
+          console.error('Failed to save chats:', e);
+          return false;
+        }
+      };
+
+      // Try saving with progressively fewer chats
+      if (!saveChats(chats, 20)) {
+        if (!saveChats(chats, 15)) {
+          if (!saveChats(chats, 10)) {
+            if (!saveChats(chats, 5)) {
+              // Last resort: save only the latest 3 chats
+              if (!saveChats(chats, 3)) {
+                // If still failing, clear storage and save just the current chat
+                try {
+                  localStorage.removeItem('wizard_chats');
+                  const latestChat = chats.slice(-1);
+                  const preparedChat = prepareChatsForStorage(latestChat);
+                  localStorage.setItem('wizard_chats', JSON.stringify(preparedChat));
+                } catch {
+                  // Complete failure - clear everything
+                  localStorage.removeItem('wizard_chats');
+                  console.error('Unable to save any chats to localStorage');
+                }
+              }
+            }
+          }
         }
       }
     }
-  }, [chats]);
+  }, [chats, prepareChatsForStorage]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -138,11 +203,7 @@ export default function Home() {
       title: 'Delete Chat',
       message: 'Are you sure you want to delete this chat? This action cannot be undone.',
       onConfirm: () => {
-        setChats(prev => {
-          const updatedChats = prev.filter(c => c.id !== chatId);
-          localStorage.setItem('wizard_chats', JSON.stringify(updatedChats));
-          return updatedChats;
-        });
+        setChats(prev => prev.filter(c => c.id !== chatId));
         if (currentChatId === chatId) {
           startNewChat();
         }
@@ -379,7 +440,8 @@ export default function Home() {
               messages: messagesToSend,
               model: model,
               datetime: new Date().toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' }),
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              isCanvasEnabled: isCanvasEnabled
             }),
             signal: controller.signal
           });
@@ -528,6 +590,16 @@ export default function Home() {
               ol: ({ children }) => <ol className="list-decimal ml-6 mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="marker:text-[#d4af37]">{children}</li>,
               a: ({ node, ...props }) => <a {...props} className="text-[#d4af37] underline hover:text-[#f0e68c] transition-colors" target="_blank" rel="noopener noreferrer" />,
+              table: ({ children }) => (
+                <div className="my-4 overflow-x-auto rounded-xl border border-[#d4af37]/20">
+                  <table className="min-w-full divide-y divide-[#d4af37]/20">{children}</table>
+                </div>
+              ),
+              thead: ({ children }) => <thead className="bg-[#d4af37]/10">{children}</thead>,
+              tbody: ({ children }) => <tbody className="divide-y divide-white/10 bg-black/20">{children}</tbody>,
+              tr: ({ children }) => <tr className="hover:bg-white/5 transition-colors">{children}</tr>,
+              th: ({ children }) => <th className="px-4 py-3 text-left text-sm font-semibold text-[#d4af37] uppercase tracking-wider">{children}</th>,
+              td: ({ children }) => <td className="px-4 py-3 text-sm text-white/80 whitespace-nowrap">{children}</td>,
               code({ node, inline, className, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || '')
                 return !inline ? (
@@ -570,7 +642,22 @@ export default function Home() {
       <div className="space-y-3">
         {content.map((item, idx) => {
           if (item.type === 'text') return (
-            <ReactMarkdown key={idx} remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              key={idx}
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({ children }) => (
+                  <div className="my-4 overflow-x-auto rounded-xl border border-[#d4af37]/20">
+                    <table className="min-w-full divide-y divide-[#d4af37]/20">{children}</table>
+                  </div>
+                ),
+                thead: ({ children }) => <thead className="bg-[#d4af37]/10">{children}</thead>,
+                tbody: ({ children }) => <tbody className="divide-y divide-white/10 bg-black/20">{children}</tbody>,
+                tr: ({ children }) => <tr className="hover:bg-white/5 transition-colors">{children}</tr>,
+                th: ({ children }) => <th className="px-4 py-3 text-left text-sm font-semibold text-[#d4af37] uppercase tracking-wider">{children}</th>,
+                td: ({ children }) => <td className="px-4 py-3 text-sm text-white/80 whitespace-nowrap">{children}</td>,
+              }}
+            >
               {item.text}
             </ReactMarkdown>
           );
@@ -695,6 +782,16 @@ export default function Home() {
             <div className="mt-4 pt-4 border-t border-[#d4af37]/10 flex items-center gap-3 p-2.5 hover:bg-white/5 rounded-lg transition-all cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-[#d4af37] flex items-center justify-center text-black font-bold">S</div>
               <div className="text-sm font-medium">User</div>
+            </div>
+
+            {/* Storage Info Note */}
+            <div className="mt-3 p-2.5 bg-white/5 rounded-lg border border-white/10">
+              <p className="text-[10px] text-white/40 leading-relaxed">
+                Chats are stored in <span className="text-[#d4af37]/70">localStorage</span> on this browser only
+              </p>
+              <p className="text-[10px] text-white/30 mt-1 leading-relaxed">
+                Images are not saved permanently
+              </p>
             </div>
           </div>
         </motion.aside>
