@@ -43,6 +43,10 @@ STRICT COMMANDS:
     // Model-specific configurations
     const isNemotronModel = model === 'nvidia/nemotron-3-nano-30b-a3b';
     const isPhi4Model = model === 'microsoft/phi-4-mini-instruct';
+    const isPhi4Multimodal = model === 'microsoft/phi-4-multimodal-instruct';
+    const isGPTOSSModel = model === 'openai/gpt-oss-120b' || model === 'openai/gpt-oss-20b';
+    const isMinistralModel = model === 'mistralai/ministral-14b-instruct-2512';
+    const isLlama4Model = model === 'meta/llama-4-maverick-17b-128e-instruct';
 
     // Base payload
     const payload: Record<string, unknown> = {
@@ -58,11 +62,26 @@ STRICT COMMANDS:
       payload.max_tokens = 16384;
       payload.reasoning_budget = 16384;
       payload.chat_template_kwargs = { enable_thinking: true };
-    } else if (isPhi4Model) {
-      // Phi-4 Mini - smaller, faster model
+    } else if (isPhi4Model || isPhi4Multimodal) {
+      // Phi-4 Mini/Multimodal - smaller, faster model
       payload.temperature = 0.1;
       payload.top_p = 0.7;
-      payload.max_tokens = 1024;
+      payload.max_tokens = isPhi4Multimodal ? 2048 : 1024;
+    } else if (isGPTOSSModel) {
+      // GPT-OSS models - fast responses
+      payload.temperature = 1;
+      payload.top_p = 1;
+      payload.max_tokens = 4096;
+    } else if (isMinistralModel) {
+      // Ministral 14B - fast and efficient
+      payload.temperature = 0.15;
+      payload.top_p = 1;
+      payload.max_tokens = 2048;
+    } else if (isLlama4Model) {
+      // Llama 4 Maverick
+      payload.temperature = 1;
+      payload.top_p = 1;
+      payload.max_tokens = 512;
     } else {
       // Default settings for other models
       payload.temperature = 0.2;

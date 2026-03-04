@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wand2 } from 'lucide-react';
+import Image from 'next/image';
 
 export const LoadingScreen = () => {
     const [isMounted, setIsMounted] = useState(false);
@@ -79,18 +79,15 @@ export const LoadingScreen = () => {
 
             {/* Main Content */}
             <div className="relative z-10 flex flex-col items-center">
-                {/* Wand Icon with Glow */}
+                {/* Logo */}
                 <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', duration: 0.8, bounce: 0.4 }}
                     className="relative mb-8"
                 >
-                    <div className="absolute inset-0 bg-[#d4af37] rounded-3xl blur-xl opacity-50" />
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-[#d4af37] to-[#b8972e] rounded-3xl flex items-center justify-center shadow-2xl shadow-[#d4af37]/30">
-                        <Wand2 size={40} className="text-black sm:hidden" />
-                        <Wand2 size={48} className="text-black hidden sm:block" />
-                    </div>
+                    <Image src="/icon.png" alt="Logo" width={80} height={80} className="sm:hidden" />
+                    <Image src="/icon.png" alt="Logo" width={96} height={96} className="hidden sm:block" />
                 </motion.div>
 
                 {/* Title */}

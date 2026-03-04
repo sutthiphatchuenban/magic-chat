@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Code, Eye, Copy, Check, X, Wand2 } from 'lucide-react';
+import { Code, Eye, Copy, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -32,7 +33,7 @@ export const Canvas = ({ content, type, onClose }: CanvasProps) => {
             <header className="p-4 border-b border-[#d4af37]/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-[#d4af37]/10 rounded-lg text-[#d4af37] border border-[#d4af37]/20">
-                        {type === 'html' || type === 'javascript' ? <Code size={18} /> : <Wand2 size={18} />}
+                        {type === 'html' || type === 'javascript' ? <Code size={18} /> : <Image src="/icon.png" alt="Logo" width={20} height={20} />}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-[#d4af37] uppercase tracking-wider">

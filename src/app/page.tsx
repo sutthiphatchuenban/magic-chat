@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Send, Wand2, User, Plus, Layout,
+  Send, User, Plus, Layout,
   ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search
 } from 'lucide-react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -348,8 +349,27 @@ export default function Home() {
     }
 
     const originalInput = input;
-    const userMessage: Message = { role: 'user', content: userContent };
-    const newMessages = [...messages, userMessage];
+    
+    // Check if we're editing an existing message
+    const editIndexStr = inputRef.current?.getAttribute('data-edit-index');
+    const editIndex = editIndexStr ? parseInt(editIndexStr, 10) : -1;
+    
+    let newMessages: Message[];
+    
+    if (editIndex >= 0 && editIndex < messages.length) {
+      // Editing mode: remove all messages from editIndex onwards
+      // and replace with the edited message
+      newMessages = messages.slice(0, editIndex);
+      const editedMessage: Message = { role: 'user', content: userContent };
+      newMessages = [...newMessages, editedMessage];
+      // Clear the edit index
+      inputRef.current?.removeAttribute('data-edit-index');
+    } else {
+      // Normal mode: append new message
+      const userMessage: Message = { role: 'user', content: userContent };
+      newMessages = [...messages, userMessage];
+    }
+    
     setMessages(newMessages);
     setInput('');
     // Reset textarea height
@@ -359,7 +379,46 @@ export default function Home() {
     setSelectedImage(null);
     setIsLoading(true);
 
-    let messagesToSend = [...newMessages];
+    // Prepare messages for API - convert old image/search messages to text-only
+    // to prevent re-processing on subsequent chats
+    let messagesToSend = newMessages.map((msg, index) => {
+      // Keep the latest user message as-is (it may contain the new image/search)
+      if (index === newMessages.length - 1) return msg;
+      
+      // Convert old messages with images to text-only
+      if (msg.role === 'user' && Array.isArray(msg.content)) {
+        const textParts = msg.content
+          .filter((item: any) => item.type === 'text')
+          .map((item: any) => item.text)
+          .join(' ');
+        return {
+          ...msg,
+          content: textParts || '[Image analyzed previously]'
+        };
+      }
+      
+      // Convert old search context messages to simple text
+      if (msg.role === 'user' && typeof msg.content === 'string' && msg.content.includes('Search Results for')) {
+        // Extract just the reference links from old search results
+        const refMatch = msg.content.match(/References?:\s*([\s\S]*)$/i);
+        const refs = refMatch ? refMatch[1].trim() : '';
+        return {
+          ...msg,
+          content: refs ? `[Previous search references]\n${refs}` : '[Search performed previously]'
+        };
+      }
+      
+      // Convert old system search messages to simple text
+      if (msg.role === 'system' && typeof msg.content === 'string' &&
+          (msg.content.includes('[System]: I searched for') || msg.content.includes('[System]: Search failed'))) {
+        return {
+          ...msg,
+          content: '[Search performed previously]'
+        };
+      }
+      
+      return msg;
+    });
 
     try {
       const controller = new AbortController();
@@ -556,7 +615,7 @@ export default function Home() {
 
     } catch (error: any) {
       if (error.name === 'AbortError') return;
-      const errorMessage = `⚠️ **${selectedModel.name}** is currently unavailable.\n\nThis model might be temporarily down or overloaded. Please try:\n\n1. **Switch to a different model** using the dropdown above\n2. Wait a moment and try again\n\n_Click on the model name (${selectedModel.icon} ${selectedModel.name}) to see other options._`;
+      const errorMessage = `⚠️ **${selectedModel.name}** is currently unavailable.\n\nThis model might be temporarily down or overloaded. Please try:\n\n1. **Switch to a different model** using the dropdown above\n2. Wait a moment and try again\n\n_Click on the model name to see other options._`;
 
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -817,7 +876,7 @@ export default function Home() {
               <div className="relative">
                 <div onClick={() => setIsModelMenuOpen(!isModelMenuOpen)} className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 hover:bg-white/5 rounded-lg cursor-pointer group">
                   <span className="font-semibold text-[#d4af37] flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
-                    <span>{selectedModel.icon}</span>
+                    {selectedModel.vision && selectedModel.id !== 'auto' && <ImageIcon size={16} className="text-[#d4af37]" />}
                     <span className="hidden sm:inline">{selectedModel.name}</span>
                     <span className="sm:hidden">{selectedModel.name.split(' ')[0]}</span>
                   </span>
@@ -825,11 +884,18 @@ export default function Home() {
                 </div>
                 <AnimatePresence>
                   {isModelMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-full left-0 mt-2 w-56 sm:w-64 bg-[#0a0a1a] border border-[#d4af37]/20 rounded-xl shadow-2xl p-2 z-50 overflow-hidden">
-                      {MODELS.map(model => (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-full left-0 mt-2 w-56 sm:w-64 bg-[#0a0a1a] border border-[#d4af37]/20 rounded-xl shadow-2xl p-2 z-50 overflow-hidden max-h-64 overflow-y-auto custom-scrollbar">
+                      {[...MODELS].sort((a, b) => {
+                        // Sort: Auto first, then vision models, then others
+                        if (a.id === 'auto') return -1;
+                        if (b.id === 'auto') return 1;
+                        if (a.vision && !b.vision) return -1;
+                        if (!a.vision && b.vision) return 1;
+                        return 0;
+                      }).map(model => (
                         <button key={model.id} onClick={() => { setSelectedModel(model); setIsModelMenuOpen(false); }} className={`flex items-center justify-between w-full p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-all text-sm ${selectedModel.id === model.id ? 'text-[#d4af37] bg-[#d4af37]/5' : ''}`}>
-                          <div className="flex items-center gap-2"><span>{model.icon}</span>{model.name}</div>
-                          {model.vision && <span className="text-[10px] bg-[#d4af37]/10 px-1.5 rounded text-[#d4af37]">Vision</span>}
+                          <span>{model.name}</span>
+                          {model.vision && model.id !== 'auto' && <ImageIcon size={14} className="text-[#d4af37]" />}
                         </button>
                       ))}
                     </motion.div>
@@ -851,7 +917,7 @@ export default function Home() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 sm:px-4 w-full max-w-3xl mx-auto custom-scrollbar pt-2 sm:pt-10 pb-28 sm:pb-48">
             {messages.length <= 1 ? (
               <div className="h-full flex flex-col items-center justify-center -mt-10 sm:-mt-20 px-4">
-                <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-12 sm:w-16 h-12 sm:h-16 bg-[#d4af37] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.3)] mb-6 sm:mb-8"><Wand2 size={28} className="text-black sm:hidden" /><Wand2 size={32} className="text-black hidden sm:block" /></motion.div>
+                <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-12 sm:w-16 h-12 sm:h-16 flex items-center justify-center mb-6 sm:mb-8"><Image src="/icon.png" alt="Logo" width={48} height={48} className="sm:hidden" /><Image src="/icon.png" alt="Logo" width={64} height={64} className="hidden sm:block" /></motion.div>
                 <h2 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent text-center">Magical AI Assistant</h2>
                 <p className="mt-3 sm:mt-4 text-white/40 text-center text-sm sm:text-base max-w-md">I can chat, build websites, write code, and generate images!</p>
               </div>
@@ -861,7 +927,7 @@ export default function Home() {
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group/msg relative`}>
                     <div className={`flex gap-2 sm:gap-4 max-w-[95%] sm:max-w-[90%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-[#4b0082]' : 'bg-[#d4af37]'}`}>
-                        {msg.role === 'user' ? <User size={16} /> : <Wand2 size={16} className="text-black" />}
+                        {msg.role === 'user' ? <User size={16} /> : <Image src="/icon.png" alt="Logo" width={20} height={20} />}
                       </div>
                       <div className="flex flex-col gap-1 w-full min-w-0">
                         {msg.reasoning && <ReasoningBlock reasoning={msg.reasoning} />}
@@ -885,10 +951,12 @@ export default function Home() {
                                 onClick={() => {
                                   const text = typeof msg.content === 'string' ? msg.content : msg.content.map(c => c.type === 'text' ? c.text : '').join('');
                                   setInput(text);
+                                  // Store the index of message being edited
+                                  (inputRef.current as any)?.setAttribute('data-edit-index', i.toString());
                                   inputRef.current?.focus();
                                 }}
                                 className="p-1.5 text-white/40 hover:text-[#d4af37] hover:bg-white/10 rounded transition-colors"
-                                title="Edit & Send Again"
+                                title="Edit & Regenerate"
                               >
                                 <Pencil size={13} />
                               </button>
@@ -906,7 +974,7 @@ export default function Home() {
                       {isSearching ? (
                         <Search size={16} className="text-white animate-pulse" />
                       ) : (
-                        <Wand2 size={16} className="text-black animate-pulse" />
+                        <Image src="/icon.png" alt="Logo" width={20} height={20} className="animate-pulse" />
                       )}
                     </div>
                     <div className="flex flex-col gap-2">

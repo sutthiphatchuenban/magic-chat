@@ -9,7 +9,7 @@ interface ReasoningBlockProps {
 }
 
 export const ReasoningBlock = ({ reasoning }: ReasoningBlockProps) => {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
         <div className="mb-4 overflow-hidden">
@@ -20,7 +20,7 @@ export const ReasoningBlock = ({ reasoning }: ReasoningBlockProps) => {
                 <div className="p-1 bg-[#d4af37]/10 rounded border border-[#d4af37]/20">
                     <Brain size={14} className="text-[#d4af37]" />
                 </div>
-                <span className="text-xs font-medium text-[#d4af37]/80 group-hover:text-[#d4af37]">Thinking Process</span>
+                <span className="text-xs font-medium text-[#d4af37]/80 group-hover:text-[#d4af37]">Thinking Process (click to view)</span>
                 <ChevronDown size={12} className={`text-[#d4af37]/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
