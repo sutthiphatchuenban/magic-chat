@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
 const outfit = Outfit({ subsets: ['latin'] });
@@ -21,6 +22,7 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.className} antialiased`}>
         {children}
+        <Analytics />
         <script
           dangerouslySetInnerHTML={{
             __html: `
