@@ -39,7 +39,7 @@ export const Canvas = ({ content, type, onClose }: CanvasProps) => {
                         <h3 className="text-sm font-bold text-[#d4af37] uppercase tracking-wider">
                             {type === 'markdown' || type === 'text' ? 'Magic Document' : 'Magic Code'}
                         </h3>
-                        <p className="text-[10px] text-white/30 truncate max-w-[200px] italic">Enchanted rendering engine</p>
+                        <p className="text-[10px] text-white/30 truncate max-w-50 italic">Enchanted rendering engine</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -80,7 +80,7 @@ export const Canvas = ({ content, type, onClose }: CanvasProps) => {
                                 />
                             </div>
                         ) : (
-                            <div className="w-full max-w-[800px] h-fit min-h-full bg-white rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-gray-200 p-12 mb-12 transform origin-top transition-transform duration-500 text-slate-900">
+                            <div className="w-full max-w-200 h-fit min-h-full bg-white rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-gray-200 p-12 mb-12 transform origin-top transition-transform duration-500 text-slate-900">
                                 <div className="prose prose-slate prose-headings:text-slate-900 prose-p:text-slate-800 prose-strong:text-slate-900 prose-li:text-slate-800 max-w-none font-serif">
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}

@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, User, Plus, Layout,
-  ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search
+  ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search,
+  Volume2, VolumeX, Microscope
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,12 +47,129 @@ export default function Home() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isDeepResearchMode, setIsDeepResearchMode] = useState(false);
+  const [isDeepResearching, setIsDeepResearching] = useState(false);
+  const [deepResearchProgress, setDeepResearchProgress] = useState<string>('');
+  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
 
   const openInCanvas = (content: string, type: string = 'markdown') => {
     setCanvasContent(content);
     setCanvasType(type);
     setIsCanvasOpen(true);
   };
+
+  // Native Web Speech API fallback
+  const speakWithNativeTTS = async (text: string, index: number) => {
+    try {
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const hasThai = /[\u0E00-\u0E7F]/.test(text);
+      
+      const thaiVoice = voices.find(v => v.lang.toLowerCase().includes('th'));
+      const englishVoice = voices.find(v => v.lang.toLowerCase().includes('en'));
+      
+      if (hasThai && thaiVoice) {
+        utterance.voice = thaiVoice;
+        utterance.rate = 0.9;
+      } else if (englishVoice) {
+        utterance.voice = englishVoice;
+        utterance.rate = 1;
+      }
+
+      utterance.onend = () => setSpeakingMessageIndex(null);
+      utterance.onerror = () => setSpeakingMessageIndex(null);
+
+      setSpeakingMessageIndex(index);
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Native TTS error:', error);
+      setSpeakingMessageIndex(null);
+    }
+  };
+
+  // TTS (Text-to-Speech) functions using ResponsiveVoice with fallback
+  const speakText = (text: string, index: number) => {
+    // Stop any current speech
+    const rv = (window as any).responsiveVoice;
+    if (rv) rv.cancel();
+    window.speechSynthesis.cancel();
+    
+    if (speakingMessageIndex === index) {
+      setSpeakingMessageIndex(null);
+      return;
+    }
+
+    // Detect language
+    const hasThai = /[\u0E00-\u0E7F]/.test(text);
+    const voice = hasThai ? "Thai Female" : "US English Female";
+    
+    setSpeakingMessageIndex(index);
+    
+    // Try ResponsiveVoice first
+    if (rv) {
+      let fallbackTriggered = false;
+      
+      rv.speak(text, voice, {
+        rate: hasThai ? 0.9 : 1,
+        pitch: 1,
+        volume: 1,
+        onend: () => {
+          setSpeakingMessageIndex(null);
+        },
+        onerror: () => {
+          if (!fallbackTriggered) {
+            fallbackTriggered = true;
+            console.warn('ResponsiveVoice failed, falling back to native TTS');
+            speakWithNativeTTS(text, index);
+          }
+        }
+      });
+      
+      // Timeout fallback if ResponsiveVoice doesn't respond
+      setTimeout(() => {
+        if (speakingMessageIndex === index && !fallbackTriggered) {
+          fallbackTriggered = true;
+          console.warn('ResponsiveVoice timeout, falling back to native TTS');
+          rv.cancel();
+          speakWithNativeTTS(text, index);
+        }
+      }, 2000);
+    } else {
+      // ResponsiveVoice not available, use native
+      speakWithNativeTTS(text, index);
+    }
+  };
+
+  const stopSpeaking = useCallback(() => {
+    // Force stop ResponsiveVoice multiple times
+    const rv = (window as any).responsiveVoice;
+    if (rv && typeof rv.cancel === 'function') {
+      try {
+        rv.cancel();
+        // Double cancel for safety
+        setTimeout(() => rv.cancel(), 50);
+        setTimeout(() => rv.cancel(), 100);
+      } catch (e) {
+        console.error('ResponsiveVoice cancel error:', e);
+      }
+    }
+    
+    // Force stop native TTS multiple times
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+        // Some browsers need double cancel
+        setTimeout(() => window.speechSynthesis?.cancel(), 50);
+        setTimeout(() => window.speechSynthesis?.cancel(), 100);
+      } catch (e) {
+        console.error('SpeechSynthesis cancel error:', e);
+      }
+    }
+    
+    setSpeakingMessageIndex(null);
+  }, []);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,9 +195,42 @@ export default function Home() {
       setIsSidebarOpen(true);
     }
 
+    // Stop TTS when leaving page or hiding
+    const stopAllTTS = () => {
+      const rv = (window as any).responsiveVoice;
+      if (rv) rv.cancel();
+      window.speechSynthesis.cancel();
+      setSpeakingMessageIndex(null);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAllTTS();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      stopAllTTS();
+    };
+
+    const handlePageHide = () => {
+      stopAllTTS();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    
+    // Try to stop any ongoing speech from previous session
+    stopAllTTS();
+
     return () => {
       clearTimeout(timer);
       clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      stopAllTTS();
     };
   }, []);
 
@@ -179,7 +330,12 @@ export default function Home() {
       content: 'สวัสดี! มีอะไรให้ช่วยไหม?'
     }]);
     setIsCanvasOpen(false);
-  }, []);
+    setIsCanvasEnabled(false);
+    setIsImageMode(false);
+    setIsSearchMode(false);
+    setIsDeepResearchMode(false);
+    stopSpeaking();
+  }, [stopSpeaking]);
 
   const selectChat = (chatId: string) => {
     const chat = chats.find(c => c.id === chatId);
@@ -467,10 +623,47 @@ export default function Home() {
           messagesToSend = [...newMessages, { role: 'system', content: `[System]: Search failed. Answering from internal knowledge.` }];
         }
       } else if (isSearchMode) {
-        console.log('[Search] Skipped - input type:', typeof originalInput, 'value:', originalInput);
-      }
+      console.log('[Search] Skipped - input type:', typeof originalInput, 'value:', originalInput);
+    }
 
-      // Auto model selection logic with fallback
+    // Handle Deep Research Mode
+    if (isDeepResearchMode && typeof originalInput === 'string' && originalInput.trim()) {
+      console.log('[Deep Research] Triggered for:', originalInput);
+      try {
+        setIsDeepResearching(true);
+        setDeepResearchProgress('Starting research...');
+        
+        const deepResearchResponse = await fetch('/api/deep-research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: originalInput, maxRounds: 3 }),
+          signal: controller.signal
+        });
+
+        const deepResearchData = await deepResearchResponse.json();
+        setIsDeepResearching(false);
+        setDeepResearchProgress('');
+
+        if (deepResearchData.success && deepResearchData.totalRounds > 0) {
+          const researchContextMessage: Message = {
+            role: 'user',
+            content: deepResearchData.context
+          };
+          messagesToSend = [...newMessages, researchContextMessage];
+        } else {
+          messagesToSend = [...newMessages, { role: 'system', content: `[System]: Deep research completed but no results found. Answering from internal knowledge.` }];
+        }
+      } catch (err) {
+        console.error('[Deep Research] Failed:', err);
+        setIsDeepResearching(false);
+        setDeepResearchProgress('');
+        messagesToSend = [...newMessages, { role: 'system', content: `[System]: Deep research failed. Answering from internal knowledge.` }];
+      }
+    } else if (isDeepResearchMode) {
+      console.log('[Deep Research] Skipped - input type:', typeof originalInput, 'value:', originalInput);
+    }
+
+    // Auto model selection logic with fallback
       let modelToSend: string;
       let fallbackModels: string[] = [];
 
@@ -500,7 +693,7 @@ export default function Home() {
               model: model,
               datetime: new Date().toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' }),
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              isCanvasEnabled: isCanvasEnabled
+              isCanvasEnabled: isCanvasEnabled || isDeepResearchMode // Force Canvas for Deep Research
             }),
             signal: controller.signal
           });
@@ -623,6 +816,7 @@ export default function Home() {
       }]);
     } finally {
       setIsLoading(false);
+      setIsDeepResearchMode(false); // Reset Deep Research mode after use
       abortControllerRef.current = null;
     }
   };
@@ -643,7 +837,7 @@ export default function Home() {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              p: ({ children }) => <div className="mb-2 last:mb-0">{children}</div>,
               strong: ({ children }) => <strong className="font-bold text-[#d4af37]">{children}</strong>,
               ul: ({ children }) => <ul className="list-disc ml-6 mb-2 space-y-1">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal ml-6 mb-2 space-y-1">{children}</ol>,
@@ -770,7 +964,7 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: isLoaded ? 1 : 0 }}
         transition={{ duration: 0.5 }}
-        className="flex h-[100dvh] bg-[#050510] text-[#e0e0f0] overflow-hidden font-sans relative"
+        className="flex h-dvh bg-[#050510] text-[#e0e0f0] overflow-hidden font-sans relative"
       >
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none opacity-10 overflow-hidden">
@@ -785,7 +979,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
+              className="fixed inset-0 bg-black/50 z-60 md:hidden"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
@@ -798,9 +992,9 @@ export default function Home() {
             width: isSidebarOpen ? 260 : 0,
           }}
           transition={{ duration: 0.2 }}
-          className={`fixed md:relative h-full bg-[#0a0a15] md:bg-black/40 backdrop-blur-xl border-r border-[#d4af37]/10 flex flex-col z-[70] md:z-20 overflow-hidden ${isSidebarOpen ? 'shadow-2xl md:shadow-none' : ''}`}
+          className={`fixed md:relative h-full bg-[#0a0a15] md:bg-black/40 backdrop-blur-xl border-r border-[#d4af37]/10 flex flex-col z-70 md:z-20 overflow-hidden ${isSidebarOpen ? 'shadow-2xl md:shadow-none' : ''}`}
         >
-          <div className="p-4 flex flex-col h-full overflow-hidden w-[260px]">
+          <div className="p-4 flex flex-col h-full overflow-hidden w-65">
             <button onClick={() => { startNewChat(); if (window.innerWidth < 768) setIsSidebarOpen(false); }} className="flex items-center gap-2 w-full p-2.5 hover:bg-white/5 rounded-lg transition-all border border-[#d4af37]/10">
               <Plus size={18} className="text-[#d4af37]" />
               <span className="text-sm font-medium whitespace-nowrap">New chat</span>
@@ -861,7 +1055,7 @@ export default function Home() {
           {(isLoading || isGeneratingImage) && (
             <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 z-50 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37]"
+                className="h-full bg-linear-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37]"
                 initial={{ x: '-100%' }}
                 animate={{ x: '100%' }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
@@ -918,7 +1112,7 @@ export default function Home() {
             {messages.length <= 1 ? (
               <div className="h-full flex flex-col items-center justify-center -mt-10 sm:-mt-20 px-4">
                 <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-12 sm:w-16 h-12 sm:h-16 flex items-center justify-center mb-6 sm:mb-8"><Image src="/icon.png" alt="Logo" width={48} height={48} className="sm:hidden" /><Image src="/icon.png" alt="Logo" width={64} height={64} className="hidden sm:block" /></motion.div>
-                <h2 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent text-center">Magical AI Assistant</h2>
+                <h2 className="text-xl sm:text-3xl font-bold bg-linear-to-r from-white to-white/60 bg-clip-text text-transparent text-center">Magical AI Assistant</h2>
                 <p className="mt-3 sm:mt-4 text-white/40 text-center text-sm sm:text-base max-w-md">I can chat, build websites, write code, and generate images!</p>
               </div>
             ) : (
@@ -936,6 +1130,29 @@ export default function Home() {
 
                           {/* Message Actions */}
                           <div className={`absolute -bottom-8 ${msg.role === 'user' ? 'right-0' : 'left-0'} flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1`}>
+                            {/* TTS Button - Only for assistant messages */}
+                            {msg.role === 'assistant' && typeof msg.content === 'string' && (
+                              <button
+                                onClick={() => {
+                                  if (speakingMessageIndex === i) {
+                                    stopSpeaking();
+                                  } else {
+                                    // Strip markdown for cleaner speech
+                                    const content = msg.content as string;
+                                    const cleanText = content
+                                      .replace(/```[\s\S]*?```/g, '[code block]')
+                                      .replace(/`([^`]+)`/g, '$1')
+                                      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                                      .replace(/[#*_~]/g, '');
+                                    speakText(cleanText, i);
+                                  }
+                                }}
+                                className={`p-1.5 rounded transition-colors ${speakingMessageIndex === i ? 'text-[#d4af37] bg-[#d4af37]/10' : 'text-white/40 hover:text-[#d4af37] hover:bg-white/10'}`}
+                                title={speakingMessageIndex === i ? 'Stop speaking' : 'Read aloud'}
+                              >
+                                {speakingMessageIndex === i ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 const text = typeof msg.content === 'string' ? msg.content : msg.content.map(c => c.type === 'text' ? c.text : '').join('');
@@ -967,11 +1184,11 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
-                {/* Typing/Searching Indicator */}
-                {(isLoading || isSearching) && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
+                {/* Typing/Searching/Researching Indicator */}
+                {(isLoading || isSearching || isDeepResearching) && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
                   <div className="flex gap-4 items-start">
-                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'}`}>
-                      {isSearching ? (
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${isDeepResearching ? 'bg-blue-500' : isSearching ? 'bg-green-500' : 'bg-[#d4af37]'}`}>
+                      {isSearching || isDeepResearching ? (
                         <Search size={16} className="text-white animate-pulse" />
                       ) : (
                         <Image src="/icon.png" alt="Logo" width={20} height={20} className="animate-pulse" />
@@ -980,12 +1197,12 @@ export default function Home() {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">
                         <div className="flex gap-1">
-                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></span>
-                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></span>
-                          <span className={`w-2 h-2 ${isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></span>
+                          <span className={`w-2 h-2 ${isDeepResearching ? 'bg-blue-500' : isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></span>
+                          <span className={`w-2 h-2 ${isDeepResearching ? 'bg-blue-500' : isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></span>
+                          <span className={`w-2 h-2 ${isDeepResearching ? 'bg-blue-500' : isSearching ? 'bg-green-500' : 'bg-[#d4af37]'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></span>
                         </div>
-                        <span className={`text-sm ${isSearching ? 'text-green-400' : 'text-white/50'}`}>
-                          {isSearching ? 'Searching the web...' : 'AI is thinking...'}
+                        <span className={`text-sm ${isDeepResearching ? 'text-blue-400' : isSearching ? 'text-green-400' : 'text-white/50'}`}>
+                          {isDeepResearching ? 'Deep research in progress...' : isSearching ? 'Searching the web...' : 'AI is thinking...'}
                         </span>
                       </div>
                     </div>
@@ -1025,7 +1242,7 @@ export default function Home() {
                   }}
                   placeholder="Ask anything..."
                   rows={1}
-                  className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20 resize-none max-h-[200px] custom-scrollbar"
+                  className="w-full bg-transparent px-3 sm:px-4 py-2 text-sm sm:text-base focus:outline-none placeholder:text-white/20 resize-none max-h-50 custom-scrollbar"
                 />
                 <div className="flex items-center justify-between">
                   <div className="flex gap-0.5 sm:gap-1 items-center">
@@ -1074,14 +1291,39 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setIsSearchMode(!isSearchMode)}
+                      disabled={isDeepResearchMode}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${isSearchMode
                         ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                         : 'bg-white/5 text-white/30 border border-white/10 hover:text-white/50'
-                        }`}
+                        } ${isDeepResearchMode ? 'opacity-30 cursor-not-allowed' : ''}`}
                       title={isSearchMode ? "Search Mode: ON (AI จะค้นหาข้อมูลจาก Internet)" : "Search Mode: OFF"}
                     >
                       <Search size={14} />
                       <span className="hidden sm:inline">Search</span>
+                    </button>
+
+                    {/* Deep Research Mode Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setIsDeepResearchMode(!isDeepResearchMode)}
+                      disabled={isSearchMode || isDeepResearching}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${isDeepResearchMode
+                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                        : 'bg-white/5 text-white/30 border border-white/10 hover:text-white/50'
+                        } ${(isSearchMode || isDeepResearching) ? 'opacity-30 cursor-not-allowed' : ''}`}
+                      title={isDeepResearchMode ? "Deep Research: ON (AI จะค้นหาลึก 3 รอบ)" : "Deep Research: OFF"}
+                    >
+                      {isDeepResearching ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        >
+                          <Microscope size={14} />
+                        </motion.div>
+                      ) : (
+                        <Microscope size={14} />
+                      )}
+                      <span className="hidden sm:inline">{isDeepResearching ? 'Deep Research...' : 'Deep Research'}</span>
                     </button>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
@@ -1135,7 +1377,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+              className="fixed inset-0 z-200 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
               onClick={() => setPreviewImage(null)}
             >
               <motion.div

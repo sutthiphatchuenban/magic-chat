@@ -36,7 +36,7 @@ export const LoadingScreen = () => {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[200] bg-[#050510] flex items-center justify-center overflow-hidden"
+            className="fixed inset-0 z-200 bg-[#050510] flex items-center justify-center overflow-hidden"
         >
             {/* Background Effects - Simplified for mobile */}
             <div className="absolute inset-0 overflow-hidden">
@@ -70,7 +70,7 @@ export const LoadingScreen = () => {
                 {/* Single Magic Circle - Only on desktop */}
                 {!isMobile && (
                     <motion.div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-[#d4af37]/20 rounded-full"
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-100 h-100 border border-[#d4af37]/20 rounded-full"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
                     />
@@ -97,7 +97,7 @@ export const LoadingScreen = () => {
                     transition={{ delay: 0.3, duration: 0.5 }}
                     className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-4"
                 >
-                    <span className="bg-gradient-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37] bg-clip-text text-transparent">
+                    <span className="bg-linear-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37] bg-clip-text text-transparent">
                         Magical AI
                     </span>
                 </motion.h1>
@@ -118,9 +118,9 @@ export const LoadingScreen = () => {
                     transition={{ delay: 0.6, duration: 0.3 }}
                     className="relative"
                 >
-                    <div className="w-[180px] sm:w-[200px] h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-45 sm:w-50 h-1 bg-white/10 rounded-full overflow-hidden">
                         <motion.div
-                            className="h-full bg-gradient-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37] rounded-full"
+                            className="h-full bg-linear-to-r from-[#d4af37] via-[#f0e68c] to-[#d4af37] rounded-full"
                             initial={{ width: '0%' }}
                             animate={{ width: '100%' }}
                             transition={{ delay: 0.8, duration: 2.5, ease: 'easeInOut' }}
