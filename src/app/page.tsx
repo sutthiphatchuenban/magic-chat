@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, User, Plus, Layout,
-  ChevronDown, UserCircle, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search,
+  ChevronDown, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search,
   Volume2, VolumeX, Microscope
 } from 'lucide-react';
 import Image from 'next/image';
@@ -1113,7 +1113,7 @@ export default function Home() {
                   Close Canvas
                 </button>
               )}
-              <UserCircle size={24} className="text-[#d4af37]/50 pointer-cursor" />
+              <span className="text-[#d4af37] font-bold text-sm">FREE</span>
             </div>
           </header>
 
