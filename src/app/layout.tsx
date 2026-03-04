@@ -17,34 +17,40 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script src="https://code.responsivevoice.org/responsivevoice.js?key=6AqfG4Hm"></script>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // Force stop all speech on page unload
-            window.addEventListener('beforeunload', function() {
-              if (window.responsiveVoice) {
-                window.responsiveVoice.cancel();
-              }
-              if (window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-              }
-            });
-            // Also stop when page is hidden
-            document.addEventListener('visibilitychange', function() {
-              if (document.hidden) {
-                if (window.responsiveVoice) {
-                  window.responsiveVoice.cancel();
-                }
-                if (window.speechSynthesis) {
-                  window.speechSynthesis.cancel();
-                }
-              }
-            });
-          `
-        }} />
+        <script src="https://code.responsivevoice.org/responsivevoice.js?key=6AqfG4Hm" defer />
       </head>
       <body className={`${outfit.className} antialiased`}>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Force stop all speech on page unload
+                if (typeof window !== 'undefined') {
+                  window.addEventListener('beforeunload', function() {
+                    if (window.responsiveVoice) {
+                      window.responsiveVoice.cancel();
+                    }
+                    if (window.speechSynthesis) {
+                      window.speechSynthesis.cancel();
+                    }
+                  });
+                  // Also stop when page is hidden
+                  document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                      if (window.responsiveVoice) {
+                        window.responsiveVoice.cancel();
+                      }
+                      if (window.speechSynthesis) {
+                        window.speechSynthesis.cancel();
+                      }
+                    }
+                  });
+                }
+              })();
+            `,
+          }}
+        />
       </body>
     </html>
   );

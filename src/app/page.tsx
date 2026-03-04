@@ -61,6 +61,12 @@ export default function Home() {
   // Native Web Speech API fallback
   const speakWithNativeTTS = async (text: string, index: number) => {
     try {
+      if (typeof window === 'undefined' || !window.speechSynthesis) {
+        console.warn('Speech synthesis not available');
+        setSpeakingMessageIndex(null);
+        return;
+      }
+      
       window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
@@ -94,7 +100,9 @@ export default function Home() {
     // Stop any current speech
     const rv = (window as any).responsiveVoice;
     if (rv) rv.cancel();
-    window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     
     if (speakingMessageIndex === index) {
       setSpeakingMessageIndex(null);
@@ -157,7 +165,7 @@ export default function Home() {
     }
     
     // Force stop native TTS multiple times
-    if (window.speechSynthesis) {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel();
         // Some browsers need double cancel
@@ -199,7 +207,9 @@ export default function Home() {
     const stopAllTTS = () => {
       const rv = (window as any).responsiveVoice;
       if (rv) rv.cancel();
-      window.speechSynthesis.cancel();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
       setSpeakingMessageIndex(null);
     };
 
