@@ -22,3 +22,12 @@ export interface ConfirmDialogState {
     message: string;
     onConfirm: () => void;
 }
+
+export interface SharedChat {
+    id: string;
+    title: string;
+    messages: Message[];
+    createdAt: string;
+    expiresAt?: string;
+    viewCount: number;
+}

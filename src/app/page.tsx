@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, User, Plus, Layout,
   ChevronDown, Fullscreen, X, Code, Image as ImageIcon, Download, Copy, Pencil, Square, Search,
-  Volume2, VolumeX, Microscope
+  Volume2, VolumeX, Microscope, Share2
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,6 +51,8 @@ export default function Home() {
   const [isDeepResearching, setIsDeepResearching] = useState(false);
   const [deepResearchProgress, setDeepResearchProgress] = useState<string>('');
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const openInCanvas = (content: string, type: string = 'markdown') => {
     setCanvasContent(content);
@@ -178,6 +180,43 @@ export default function Home() {
     
     setSpeakingMessageIndex(null);
   }, []);
+
+  // Share chat function
+  const shareChat = async () => {
+    if (messages.length <= 1 || isSharing) return;
+
+    setIsSharing(true);
+    try {
+      const chatTitle = typeof messages[0]?.content === 'string'
+        ? messages[0].content.slice(0, 50)
+        : 'Shared Chat';
+
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: chatTitle,
+          messages: messages,
+          expiresInDays: 30,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setShareUrl(data.shareUrl);
+        // Auto copy to clipboard
+        await navigator.clipboard.writeText(data.shareUrl);
+      } else {
+        alert('Failed to share chat: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+      alert('Failed to share chat. Please try again.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1107,7 +1146,32 @@ export default function Home() {
                 </AnimatePresence>
               </div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              {/* Share Button */}
+              {messages.length > 1 && (
+                <button
+                  onClick={shareChat}
+                  disabled={isSharing}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    isSharing
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                      : 'bg-white/5 hover:bg-[#d4af37]/20 text-white/60 hover:text-[#d4af37] border border-white/10'
+                  }`}
+                  title="Share this chat"
+                >
+                  {isSharing ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Share2 size={14} />
+                    </motion.div>
+                  ) : (
+                    <Share2 size={14} />
+                  )}
+                  <span className="hidden sm:inline">{isSharing ? 'Sharing...' : 'Share'}</span>
+                </button>
+              )}
               {isCanvasOpen && (
                 <button onClick={() => setIsCanvasOpen(false)} className="flex items-center gap-2 text-xs text-[#d4af37] hover:underline underline-offset-4">
                   Close Canvas
@@ -1368,6 +1432,52 @@ export default function Home() {
               type={canvasType}
               onClose={() => setIsCanvasOpen(false)}
             />
+          )}
+        </AnimatePresence>
+
+        {/* Share Dialog */}
+        <AnimatePresence>
+          {shareUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-200 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setShareUrl(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-[#0a0a1a] border border-[#d4af37]/20 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-bold text-white mb-2">Chat Shared!</h3>
+                <p className="text-white/60 text-sm mb-4">Your chat is now public. Anyone with this link can view it.</p>
+
+                <div className="bg-black/40 border border-white/10 rounded-xl p-3 mb-4">
+                  <code className="text-sm text-[#d4af37] break-all">{shareUrl}</code>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareUrl);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#d4af37] hover:bg-[#f0e68c] text-black rounded-xl font-medium transition-all"
+                  >
+                    <Copy size={16} />
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => setShareUrl(null)}
+                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
 

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "MvbEkZoQLK",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:31:42.014Z",
+    "expiresAt": "2026-04-04T14:31:42.014Z",
+    "viewCount": 0
+  },
+  {
+    "id": "HCc0aUmd23",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:32:42.596Z",
+    "expiresAt": "2026-04-04T14:32:42.596Z",
+    "viewCount": 0
+  },
+  {
+    "id": "Iu6ToCc6p7",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:33:31.459Z",
+    "expiresAt": "2026-04-04T14:33:31.459Z",
+    "viewCount": 0
+  },
+  {
+    "id": "QferP3pPiG",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:34:25.206Z",
+    "expiresAt": "2026-04-04T14:34:25.206Z",
+    "viewCount": 2
+  },
+  {
+    "id": "xV43XLT7tq",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:36:30.237Z",
+    "expiresAt": "2026-04-04T14:36:30.237Z",
+    "viewCount": 0
+  },
+  {
+    "id": "KM3llsoEMC",
+    "title": "สวัสดี! มีอะไรให้ช่วยไหม?",
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "สวัสดี! มีอะไรให้ช่วยไหม?"
+      },
+      {
+        "role": "user",
+        "content": "ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\n\n\n"
+      },
+      {
+        "role": "assistant",
+        "content": "แชมป์ FIFA World Cup ล่าสุด (ฟุตบอลชาย) คือ **อาร์เจนตินา** ซึ่งชนะในการแข่งขันปี 2022 ที่จัดที่กาตาร์\n\n--- \n\nถ้าต้องการข้อมูลเกี่ยวกับอีเวนต์อื่น ๆ เช่น World Cup ผู้หญิงหรือ World Cup อิเตอร์กิบวอลหรืออื่น ๆ แจ้งได้เลยครับ!",
+        "reasoning": "User asks: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" meaning \"Find out who won the latest World Cup.\" Could be referring to football (soccer) World Cup. The last world cup was the 2022 FIFA World Cup (held in Qatar). The champion was Argentina.\n\nBut that's as of 2026? FIFA World Cup will again happen in 2026. Currently 2026 about says the user: \"ค้นหาว่าใครได้แชมป์บอลโลกล่าสุด\" likely in March 2026 user wants the latest champion. We have info: 2022 champion Argentina. Is there a more recent World Cup? In 2023? The 2023 women's world cup also? A think it's that the user is referring to general world cup. So answer: Argentina.\n\nBut need to be in Thai language as user wrote in Thai. Must respond directly, no self-introduction.\n\nThus output: \"แชมป์บอลโลกล่าสุดคือ Argentina\". Provide mention that 2022. Let's answer."
+      }
+    ],
+    "createdAt": "2026-03-05T14:36:49.888Z",
+    "expiresAt": "2026-04-04T14:36:49.888Z",
+    "viewCount": 1
+  }
+]
